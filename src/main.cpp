@@ -1,9 +1,27 @@
 #include <Arduino.h>
+#include <AccelStepper.h>
 
-void setup() {
-  // put your setup code here, to run once:
+const int stepPin = 3;
+const int dirPin = 4;
+
+#define motorInterfaceType 1
+
+AccelStepper myStepper(motorInterfaceType, stepPin, dirPin);
+
+void setup()
+{
+  myStepper.setMaxSpeed(1000);
+  myStepper.setAcceleration(200);
+  myStepper.setSpeed(200);
+  myStepper.moveTo(200);
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
+void loop()
+{
+  if (myStepper.distanceToGo() == 0)
+  {
+    myStepper.moveTo(-myStepper.currentPosition());
+  }
+
+  myStepper.run();
 }
