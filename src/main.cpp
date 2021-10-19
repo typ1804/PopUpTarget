@@ -3,45 +3,19 @@
 
 /** general configuration */
 
-/** pins */
-/** motor pins */
+/** motor */
 const int stepPin = 3;
 const int dirPin = 4;
-/** shock sensor pins */
-const int shockPin = 7;
-/** home sensor pins */
-const int homeStopPin = 8;
-
-/** variables */
-/** shock variables */
-bool shockDetected = false;
-/**  home sensor variables */
-bool homeStopDetected = false;
-/**  homing variables */
-bool homingComplete = false;
-int homingStepsLeft = 5000;
-/** motor variables */
+const int enablePin = 5;
+const int ms1Pin = 10;
+const int ms2Pin = 11;
+const int ms3Pin = 12;
 AccelStepper stepper(AccelStepper::DRIVER, stepPin, dirPin);
 
-void detectShock() {
-    int val = digitalRead(shockPin);
-
-    if (val == HIGH) {
-        shockDetected = true;
-    } else {
-        shockDetected = false;
-    }
-}
-
-void detectHomeStop() {
-    int val = digitalRead(homeStopPin);
-
-    if (val == HIGH) {
-        homeStopDetected = true;
-    } else {
-        homeStopDetected = false;
-    }
-}
+/** homing */
+bool homingComplete = false;
+long homingInitial = -1;
+const int homeStopPin = 8;
 
 void moveTargetIntoPositionHit() {
 //    if (shockDetected) {
@@ -52,58 +26,39 @@ void moveTargetIntoPositionHit() {
 //    }
 }
 
-void moveTargetIntoPositionHome() {
-    stepper.moveTo(homingStepsLeft);
-    stepper.setSpeed(200);
-
-    if (!homingComplete) {
-        if (stepper.currentPosition() != stepper.targetPosition()) {
-            stepper.run();
-            homingStepsLeft -= stepper.currentPosition();
-        }
-
-        if (homeStopDetected) {
-            stepper.stop();
-            stepper.runSpeed();
-            stepper.setCurrentPosition(0);
-            stepper.moveTo(0);
-
-            homingComplete = true;
-            homingStepsLeft = 0;
-        }
+void homing2() {
+    while (digitalRead(homeStopPin)) {
+        stepper.moveTo(homingInitial);
+        homingInitial--;
+        stepper.run();
     }
-}
 
-void stopMotorIfStopDetected() {
-    if (homeStopDetected) {
-        stepper.stop();
-        stepper.moveTo(0);
-        stepper.runSpeed();
-    }
+    stepper.stop();
+    stepper.setCurrentPosition(0);
+
+    digitalWrite(enablePin, HIGH);
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 void setup() {
-    stepper.setMaxSpeed(200);
-    stepper.setAcceleration(200);
+    stepper.setMaxSpeed(2000);
+    stepper.setAcceleration(500);
 
     pinMode(LED_BUILTIN, OUTPUT);
-    pinMode(shockPin, INPUT);
-    pinMode(homeStopPin, INPUT);
+    pinMode(enablePin, OUTPUT);
+    pinMode(ms1Pin, OUTPUT);
+    pinMode(ms2Pin, OUTPUT);
+    pinMode(ms3Pin, OUTPUT);
+    pinMode(homeStopPin, INPUT_PULLUP);
+
+    digitalWrite(ms1Pin, HIGH);
+    digitalWrite(ms2Pin, HIGH);
+    digitalWrite(ms3Pin, HIGH);
 
     Serial.begin(115200);
+    homing2();
 }
 
 void loop() {
-    detectShock();
-    detectHomeStop();
-    stopMotorIfStopDetected();
-    moveTargetIntoPositionHome();
-//    moveTargetIntoPositionHit();
-
-
-    if (homeStopDetected) {
-        digitalWrite(LED_BUILTIN, HIGH);
-    } else {
-        digitalWrite(LED_BUILTIN, LOW);
-    }
+//    homing();
 }
