@@ -17,30 +17,63 @@ bool homingComplete = false;
 long homingInitial = -1;
 const int homeStopPin = 8;
 
-void moveTargetIntoPositionHit() {
-//    if (shockDetected) {
-//        if (stepper.distanceToGo() == 0) {
-//            stepper.moveTo(-stepper.currentPosition());
-//        }
-//        stepper.runToPosition();
-//    }
+/** knock */
+const int knockPin = A0;
+const int knockThreshold = 100;
+int knockReading = 0;
+bool knockDetected = false;
+
+/** positions */
+const int shootingPosition = 900;
+const int hitPosition = 100;
+const int resetShootingPositionDelay = 5000;
+
+void detectMoveTargetIntoPositionShoot() {
+    if (homingComplete && !knockDetected) {
+        if (stepper.currentPosition() != shootingPosition) {
+            stepper.runToNewPosition(shootingPosition);
+            delay(resetShootingPositionDelay);
+        }
+    }
 }
 
-void homing2() {
+void detectMoveTargetIntoPositionHit() {
+    if (homingComplete && knockDetected) {
+        if (stepper.currentPosition() != hitPosition) {
+            stepper.runToNewPosition(hitPosition);
+            knockDetected = false;
+        }
+    }
+}
+
+void homing() {
     while (digitalRead(homeStopPin)) {
         stepper.moveTo(homingInitial);
-        homingInitial--;
         stepper.run();
+        homingInitial--;
     }
 
     stepper.stop();
+    stepper.run();
     stepper.setCurrentPosition(0);
+    homingComplete = true;
+}
 
-    digitalWrite(enablePin, HIGH);
-    digitalWrite(LED_BUILTIN, HIGH);
+void detectKnock() {
+    knockReading = analogRead(knockPin);
+
+    if (!knockDetected) {
+        if (stepper.currentPosition() > shootingPosition - 10 && stepper.currentPosition() < shootingPosition + 10) {
+            if (knockReading >= knockThreshold) {
+                knockDetected = true;
+            }
+        }
+    }
 }
 
 void setup() {
+    Serial.begin(115200);
+
     stepper.setMaxSpeed(2000);
     stepper.setAcceleration(500);
 
@@ -55,10 +88,11 @@ void setup() {
     digitalWrite(ms2Pin, HIGH);
     digitalWrite(ms3Pin, HIGH);
 
-    Serial.begin(115200);
-    homing2();
+    homing();
 }
 
 void loop() {
-//    homing();
+    detectKnock();
+    detectMoveTargetIntoPositionShoot();
+    detectMoveTargetIntoPositionHit();
 }
